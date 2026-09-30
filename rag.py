@@ -10,15 +10,16 @@ emb = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 
 def get_db():
-    if Path("chroma_db").exists():
-        return Chroma(persist_directory="chroma_db", embedding_function=emb)
-    # First run on a fresh server: build the index from the PDFs
-    from langchain_community.document_loaders import PyPDFDirectoryLoader
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    db = Chroma(persist_directory="chroma_db", embedding_function=emb)
+    if db._collection.count() == 0:
+        # Empty index (fresh server): build it from the PDFs
+        from langchain_community.document_loaders import PyPDFDirectoryLoader
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-    docs = PyPDFDirectoryLoader("data/").load()
-    chunks = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100).split_documents(docs)
-    return Chroma.from_documents(chunks, emb, persist_directory="chroma_db")
+        docs = PyPDFDirectoryLoader("data/").load()
+        chunks = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100).split_documents(docs)
+        db.add_documents(chunks)
+    return db
 
 
 db = get_db()
